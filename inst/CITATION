@@ -1,0 +1,21 @@
+bibentry(
+  bibtype  = "Article",
+  title    = "The Poverty Reversal in Infant/Toddler Childcare: A Bayesian Hurdle Beta-Binomial Model with State-Varying Coefficients",
+  author   = person("JoonHo", "Lee"),
+  journal  = "arXiv preprint",
+  year     = "2026",
+  textVersion = paste(
+    "Lee, J. (2026).",
+    "The poverty reversal in infant/toddler childcare:",
+    "a Bayesian hurdle beta-binomial model with state-varying coefficients.",
+    "arXiv preprint."
+  )
+)
+
+bibentry(
+  bibtype  = "Manual",
+  title    = "hurdlebb: Hurdle Beta-Binomial Models for Bounded Discrete Proportions",
+  author   = person("JoonHo", "Lee"),
+  year     = "2026",
+  note     = "R package version 0.1.0"
+)

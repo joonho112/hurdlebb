@@ -1,0 +1,24 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+
+# R CMD check / build artifacts
+*.tar.gz
+*.Rcheck/
+
+# pkgdown site output
+docs/
+
+# Vignette build artifacts
+inst/doc/
+vignettes/*.html
+
+# Stan compiled models
+inst/stan/*.exe
+inst/stan/*.hpp
+
+# Misc artifacts
+Rplots.pdf
+dev/

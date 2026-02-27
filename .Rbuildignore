@@ -1,0 +1,15 @@
+^\.Rproj\.user$
+^hurdlebb\.Rproj$
+^\.gitignore$
+^\.DS_Store$
+^data-raw$
+^README\.md$
+^LICENSE\.md$
+^_pkgdown\.yml$
+^pkgdown$
+^docs$
+^\.github$
+^NEWS\.md$
+^vignettes/.*\.html$
+^dev$
+^Rplots\.pdf$

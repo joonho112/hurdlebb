@@ -1,0 +1,45 @@
+Package: hurdlebb
+Title: Hurdle Beta-Binomial Models for Bounded Discrete Proportions
+Version: 0.1.0
+Authors@R:
+    person("JoonHo", "Lee", , "jlee233@ua.edu", role = c("aut", "cre"),
+           comment = c(ORCID = "0009-0006-4019-8703"))
+Description: Fits two-part hurdle beta-binomial models for bounded discrete
+    proportions with structural zeros. Supports survey-weighted
+    pseudo-posterior inference, state-varying coefficients, sandwich
+    standard errors, and marginal effect decomposition via 'CmdStan'.
+    Designed for analysis of complex survey data where a proportion of
+    units report zero counts.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 4.1.0)
+Imports:
+    checkmate (>= 2.1.0),
+    cli (>= 3.4.0),
+    digest (>= 0.6.29),
+    loo (>= 2.6.0),
+    MASS,
+    Matrix (>= 1.5.0),
+    rlang (>= 1.1.0)
+Suggests:
+    bayesplot (>= 1.10.0),
+    cmdstanr (>= 0.8.0),
+    ggplot2 (>= 3.4.0),
+    gridExtra,
+    knitr,
+    patchwork,
+    posterior (>= 1.4.0),
+    rmarkdown,
+    testthat (>= 3.0.0),
+    withr
+Additional_repositories: https://stan-dev.r-universe.dev
+SystemRequirements: CmdStan (https://mc-stan.org/cmdstanr/)
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://joonho112.github.io/hurdlebb/,
+    https://github.com/joonho112/hurdlebb
+BugReports: https://github.com/joonho112/hurdlebb/issues
+LazyData: true

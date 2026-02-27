@@ -1,0 +1,7 @@
+Stan model files for hurdlebb.
+
+Models are added in Phase 4 (Step 4.1):
+  hbb_base.stan          - Pooled HBB, no hierarchy, no weights
+  hbb_weighted.stan      - Pooled HBB + survey weights + scores
+  hbb_svc.stan           - SVC with optional policy moderators
+  hbb_svc_weighted.stan  - SVC + weights + scores + optional policy

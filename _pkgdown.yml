@@ -1,0 +1,152 @@
+url: https://joonho112.github.io/hurdlebb/
+
+template:
+  bootstrap: 5
+  bootswatch: cosmo
+  bslib:
+    primary: '#2C3E50'
+
+home:
+  title: 'hurdlebb: Bayesian Hurdle Beta-Binomial Models'
+  description: |
+    Fits two-part hurdle beta-binomial models for bounded discrete
+    proportions with structural zeros. Supports survey-weighted
+    pseudo-posterior inference, state-varying coefficients, sandwich
+    standard errors, and marginal effect decomposition via CmdStan.
+
+authors:
+  JoonHo Lee:
+    href: https://github.com/joonho112
+
+navbar:
+  structure:
+    left:
+    - intro
+    - reference
+    - articles
+    - news
+    right:
+    - search
+    - github
+  components:
+    articles:
+      text: Vignettes
+      menu:
+      - text: '--- Getting Started ---'
+      - text: Getting Started
+        href: articles/01-getting-started.html
+      - text: Survey Design
+        href: articles/02-survey-design.html
+      - text: '--- Advanced Topics ---'
+      - text: State-Varying Coefficients
+        href: articles/03-state-varying-coefficients.html
+      - text: Policy Moderators
+        href: articles/04-policy-moderators.html
+      - text: Marginal Effects
+        href: articles/05-marginal-effects.html
+
+reference:
+- title: Package
+  contents:
+  - hurdlebb-package
+
+- title: Model Fitting
+  desc: Main fitting function and formula specification
+  contents:
+  - hbb
+  - hbb_formula
+  - is.hbb_fit
+
+- title: Data Preparation
+  desc: Build and validate Stan-ready data structures
+  contents:
+  - prepare_stan_data
+  - validate_hbb_data
+  - validate_hbb_formula
+
+- title: Prior Specification
+  desc: Customize or inspect model priors
+  contents:
+  - hbb_prior
+  - default_prior
+
+- title: Distributions
+  desc: Beta-Binomial, zero-truncated, and hurdle distribution functions
+  contents:
+  - dbetabinom
+  - pbetabinom
+  - rbetabinom
+  - dztbetabinom
+  - rztbetabinom
+  - dhurdle_betabinom
+  - rhurdle_betabinom
+  - compute_p0
+  - compute_ztbb_mean
+  - hurdle_mean
+  - hurdle_variance
+
+- title: Design-Based Inference
+  desc: Sandwich variance and Cholesky posterior recalibration for survey data
+  contents:
+  - sandwich_variance
+  - cholesky_correct
+  - compute_wald_ci
+
+- title: Marginal Effects
+  desc: Average marginal effect decomposition into extensive and intensive margins
+  contents:
+  - ame
+  - ame_decomposition
+
+- title: Model Comparison & Diagnostics
+  desc: LOO cross-validation and posterior predictive checks
+  contents:
+  - loo.hbb_fit
+  - hbb_loo_compare
+  - ppc
+
+- title: S3 Methods
+  desc: Standard generic methods for hbb_fit objects
+  contents:
+  - coef.hbb_fit
+  - vcov.hbb_fit
+  - fitted.hbb_fit
+  - residuals.hbb_fit
+  - predict.hbb_fit
+  - summary.hbb_fit
+  - nobs.hbb_fit
+  - plot.hbb_fit
+  - plot.hbb_ppc
+  - print.hbb_fit
+  - print.hbb_sandwich
+  - print.hbb_cholesky
+  - print.hbb_ame
+  - print.hbb_loo_compare
+  - print.hbb_ppc
+  - print.summary.hbb_fit
+
+- title: Stan Model Management
+  desc: Compile and cache Stan models
+  contents:
+  - hbb_compile
+  - hbb_clear_cache
+
+- title: Sandwich Internals
+  desc: Lower-level components for sandwich variance computation
+  contents:
+  - compute_score_matrix
+  - compute_H_obs
+  - compute_J_cluster
+  - compute_der
+
+- title: Datasets
+  desc: Built-in synthetic datasets based on NSECE 2019
+  contents:
+  - nsece_synth
+  - nsece_synth_small
+  - nsece_state_policy
+
+footer:
+  structure:
+    left: developed_by
+    right: built_with

@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 181.4 209.5" width="181.4" height="209.5">
+  <defs>
+    <!-- Hex background gradient (dark navy) -->
+    <linearGradient id="hexGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A252F"/>
+      <stop offset="100%" style="stop-color:#2C3E50"/>
+    </linearGradient>
+    <!-- Glow filter for density curve -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Soft shadow for text -->
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Hexagon shape -->
+  <polygon
+    points="90.7,1 181.4,53.4 181.4,156.1 90.7,208.5 0,156.1 0,53.4"
+    fill="url(#hexGrad)"
+    stroke="#0F1920"
+    stroke-width="2"/>
+
+  <!-- Inner decorative border -->
+  <polygon
+    points="90.7,10 172,57 172,152.5 90.7,199.5 9.4,152.5 9.4,57"
+    fill="none"
+    stroke="#4A6274"
+    stroke-width="0.5"
+    opacity="0.4"/>
+
+  <!-- ============================================ -->
+  <!-- Hurdle Beta-Binomial distribution graphic    -->
+  <!-- Zero spike (blue) + Beta density (red)       -->
+  <!-- ============================================ -->
+
+  <!-- Dashed hurdle line (vertical separator) -->
+  <line
+    x1="52" y1="55" x2="52" y2="140"
+    stroke="#FFFFFF"
+    stroke-width="0.6"
+    stroke-dasharray="3,2.5"
+    opacity="0.25"/>
+
+  <!-- Zero spike bar (extensive margin — blue) -->
+  <rect
+    x="36" y="68" width="12" height="72" rx="1.5"
+    fill="#4393C3"
+    opacity="0.9"/>
+  <!-- Lighter highlight on the bar -->
+  <rect
+    x="37.5" y="68" width="3" height="72" rx="1"
+    fill="#6BAED6"
+    opacity="0.35"/>
+
+  <!-- Beta-like density filled area (intensive margin — red) -->
+  <path
+    d="M 58,140
+       C 62,139 66,136 72,130
+       C 78,123 84,110 90,100
+       C 95,92 100,88 106,86
+       C 112,84 118,86 124,90
+       C 130,95 134,102 138,110
+       C 142,118 146,128 150,134
+       C 153,138 155,140 158,140
+       Z"
+    fill="#D6604D"
+    fill-opacity="0.25"
+    stroke="none"/>
+
+  <!-- Beta-like density curve outline -->
+  <path
+    d="M 58,140
+       C 62,139 66,136 72,130
+       C 78,123 84,110 90,100
+       C 95,92 100,88 106,86
+       C 112,84 118,86 124,90
+       C 130,95 134,102 138,110
+       C 142,118 146,128 150,134
+       C 153,138 155,140 158,140"
+    fill="none"
+    stroke="#D6604D"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    opacity="0.85"
+    filter="url(#glow)"/>
+
+  <!-- Small dots along the density curve -->
+  <circle cx="78" cy="123" r="1.8" fill="#ecf0f1" opacity="0.7"/>
+  <circle cx="90" cy="100" r="1.8" fill="#ecf0f1" opacity="0.7"/>
+  <circle cx="106" cy="86" r="1.8" fill="#ecf0f1" opacity="0.7"/>
+  <circle cx="124" cy="90" r="1.8" fill="#ecf0f1" opacity="0.7"/>
+  <circle cx="138" cy="110" r="1.8" fill="#ecf0f1" opacity="0.7"/>
+
+  <!-- Baseline -->
+  <line
+    x1="28" y1="140" x2="162" y2="140"
+    stroke="#ecf0f1"
+    stroke-width="0.5"
+    opacity="0.25"/>
+
+  <!-- ============================================ -->
+  <!-- Package name                                  -->
+  <!-- ============================================ -->
+  <text
+    x="90.7" y="170"
+    font-family="Helvetica, Arial, sans-serif"
+    font-weight="bold"
+    font-size="22"
+    fill="#ecf0f1"
+    text-anchor="middle"
+    filter="url(#shadow)">hurdlebb</text>
+
+  <!-- Subtitle -->
+  <text
+    x="90.7" y="186"
+    font-family="Helvetica, Arial, sans-serif"
+    font-size="7"
+    fill="#7FB3D3"
+    text-anchor="middle"
+    opacity="0.9">Hurdle Beta-Binomial</text>
+</svg>
