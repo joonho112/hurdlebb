@@ -1,0 +1,380 @@
+# hurdlebb
+
+**hurdlebb** fits Bayesian two-part hurdle Beta-Binomial models for
+bounded discrete proportions with structural zeros. It is designed for
+complex survey data where many units report zero counts and the rest
+show overdispersed proportions — a pattern common in childcare
+enrollment, health service utilization, and ecological count data.
+
+The package uses [CmdStan](https://mc-stan.org/cmdstanr/) as its
+computational backend and provides a complete post-estimation workflow
+including survey-weighted inference, state-varying coefficients,
+marginal effect decomposition, and model comparison.
+
+## Key Features
+
+- **Two-part hurdle framework** — Separates the decision to participate
+  (extensive margin, Bernoulli) from the intensity of participation
+  (intensive margin, zero-truncated Beta-Binomial).
+- **Survey design support** — Pseudo-posterior inference with sampling
+  weights, sandwich standard errors, and Cholesky posterior
+  recalibration.
+- **State-varying coefficients (SVC)** — Hierarchical random intercepts
+  and slopes with optional cross-level policy moderators via
+  `state_level()`.
+- **Marginal effect decomposition** — Average marginal effects
+  decomposed into extensive and intensive margin contributions, with
+  reversal probability detection.
+- **Model comparison** — PSIS-LOO cross-validation with multi-model
+  comparison and Pareto-k diagnostics.
+- **Posterior predictive checks** — Customizable PPC statistics for
+  evaluating model fit.
+
+## Installation
+
+### 1. Install CmdStan (required)
+
+hurdlebb requires [CmdStan](https://mc-stan.org/cmdstanr/) for MCMC
+sampling. Install the R interface and the CmdStan toolchain:
+
+``` r
+# Install cmdstanr from the Stan R-universe
+install.packages("cmdstanr", repos = c(
+  "https://stan-dev.r-universe.dev",
+  getOption("repos")
+))
+
+# Install the CmdStan backend
+cmdstanr::install_cmdstan()
+```
+
+### 2. Install hurdlebb
+
+``` r
+# install.packages("remotes")
+remotes::install_github("joonho112/hurdlebb")
+```
+
+## Quick Example
+
+``` r
+library(hurdlebb)
+
+# Load synthetic NSECE data
+data(nsece_synth_small)
+
+# Fit a hurdle Beta-Binomial model
+fit <- hbb(
+  y | trials(n_trial) ~ poverty + urban,
+  data   = nsece_synth_small,
+  chains = 4,
+  seed   = 42
+)
+
+# Model summary
+summary(fit)
+
+# Posterior predictive check
+ppc_result <- ppc(fit)
+plot(ppc_result)
+
+# LOO cross-validation
+loo_result <- loo(fit)
+print(loo_result)
+```
+
+## The Model
+
+The hurdle Beta-Binomial decomposes a bounded count outcome into two
+parts:
+
+**Part 1 — Extensive margin (participation):** A Bernoulli model for
+whether the unit has a non-zero count. The participation probability *q*
+is linked to covariates via a logit: logit(*q*) = *X*’*α*.
+
+**Part 2 — Intensive margin (intensity):** A zero-truncated
+Beta-Binomial for the count conditional on being positive. The expected
+proportion *μ* is linked to covariates via a logit: logit(*μ*) =
+*X*’*β*, with dispersion parameter *κ*.
+
+Both margins share the same design matrix but have separate coefficient
+vectors (*α* and *β*), making it straightforward to compare whether a
+covariate pushes participation and intensity in the same or opposite
+directions.
+
+## Extended Workflow
+
+Beyond basic model fitting, hurdlebb supports a full inferential
+pipeline:
+
+``` r
+# Survey-weighted model
+fit_w <- hbb(
+  y | trials(n_trial) ~ poverty + urban,
+  data    = nsece_synth_small,
+  weights = "weight",
+  stratum = "stratum",
+  psu     = "psu",
+  seed    = 42
+)
+
+# Sandwich variance and Cholesky recalibration
+sand <- sandwich_variance(fit_w)
+chol_fit <- cholesky_correct(fit_w, sand)
+
+# Average marginal effects
+ame_result <- ame(fit_w, sand)
+ame_decomposition(ame_result)
+```
+
+## Vignettes
+
+The package includes five vignettes that walk through the complete
+analysis workflow:
+
+| Vignette                                                                                                     | Topic                                                                |
+|:-------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------|
+| [Getting Started](https://joonho112.github.io/hurdlebb/articles/01-getting-started.md)                       | Data exploration, model fitting, diagnostics, PPC, and LOO           |
+| [Survey Design](https://joonho112.github.io/hurdlebb/articles/02-survey-design.md)                           | Survey-weighted inference, sandwich variance, Cholesky recalibration |
+| [State-Varying Coefficients](https://joonho112.github.io/hurdlebb/articles/03-state-varying-coefficients.md) | Random intercepts and slopes, shrinkage interpretation               |
+| [Policy Moderators](https://joonho112.github.io/hurdlebb/articles/04-policy-moderators.md)                   | Cross-level interactions with `state_level()` terms                  |
+| [Marginal Effects](https://joonho112.github.io/hurdlebb/articles/05-marginal-effects.md)                     | AME decomposition, extensive vs. intensive margins                   |
+
+## Datasets
+
+Three synthetic datasets are included, generated via Gaussian copula
+from the 2019 National Survey of Early Care and Education (NSECE):
+
+- **`nsece_synth`** — Full dataset (~6,785 providers, 51 states)
+- **`nsece_synth_small`** — Stratified subsample (~500 providers) for
+  quick demos
+- **`nsece_state_policy`** — State-level policy variables (51 rows) for
+  cross-level moderators
+
+## Citation
+
+If you use hurdlebb in your research, please cite:
+
+    Lee, J. (2026). The poverty reversal in infant/toddler childcare: a Bayesian
+    hurdle beta-binomial model with state-varying coefficients. arXiv preprint.
+
+Or in R:
+
+``` r
+citation("hurdlebb")
+```
+
+## License
+
+MIT © JoonHo Lee
+
+# Package index
+
+## Package
+
+- [`hurdlebb`](https://joonho112.github.io/hurdlebb/reference/hurdlebb-package.md)
+  [`hurdlebb-package`](https://joonho112.github.io/hurdlebb/reference/hurdlebb-package.md)
+  : hurdlebb: Hurdle Beta-Binomial Models for Bounded Discrete
+  Proportions
+
+## Model Fitting
+
+Main fitting function and formula specification
+
+- [`hbb()`](https://joonho112.github.io/hurdlebb/reference/hbb.md) : Fit
+  a Hurdle Beta-Binomial Model
+- [`hbb_formula()`](https://joonho112.github.io/hurdlebb/reference/hbb_formula.md)
+  : Parse a Hurdle Beta-Binomial Model Formula
+- [`is.hbb_fit()`](https://joonho112.github.io/hurdlebb/reference/is.hbb_fit.md)
+  : Test if an Object is an hbb_fit
+
+## Data Preparation
+
+Build and validate Stan-ready data structures
+
+- [`prepare_stan_data()`](https://joonho112.github.io/hurdlebb/reference/prepare_stan_data.md)
+  : Prepare Stan Data for a Hurdle Beta-Binomial Model
+- [`validate_hbb_data()`](https://joonho112.github.io/hurdlebb/reference/validate_hbb_data.md)
+  : Validate an hbb_data Object
+- [`validate_hbb_formula()`](https://joonho112.github.io/hurdlebb/reference/validate_hbb_formula.md)
+  : Validate an hbb_formula Against a Dataset
+
+## Prior Specification
+
+Customize or inspect model priors
+
+- [`hbb_prior()`](https://joonho112.github.io/hurdlebb/reference/hbb_prior.md)
+  : Specify Priors for a Hurdle Beta-Binomial Model
+- [`default_prior()`](https://joonho112.github.io/hurdlebb/reference/default_prior.md)
+  : Default Prior Specification for Hurdle Beta-Binomial Models
+
+## Distributions
+
+Beta-Binomial, zero-truncated, and hurdle distribution functions
+
+- [`dbetabinom()`](https://joonho112.github.io/hurdlebb/reference/dbetabinom.md)
+  : Probability mass function of the Beta-Binomial distribution
+- [`pbetabinom()`](https://joonho112.github.io/hurdlebb/reference/pbetabinom.md)
+  : Cumulative distribution function of the Beta-Binomial distribution
+- [`rbetabinom()`](https://joonho112.github.io/hurdlebb/reference/rbetabinom.md)
+  : Random generation from the Beta-Binomial distribution
+- [`dztbetabinom()`](https://joonho112.github.io/hurdlebb/reference/dztbetabinom.md)
+  : Probability mass function of the Zero-Truncated Beta-Binomial
+- [`rztbetabinom()`](https://joonho112.github.io/hurdlebb/reference/rztbetabinom.md)
+  : Random generation from the Zero-Truncated Beta-Binomial
+- [`dhurdle_betabinom()`](https://joonho112.github.io/hurdlebb/reference/dhurdle_betabinom.md)
+  : Probability mass function of the Hurdle Beta-Binomial
+- [`rhurdle_betabinom()`](https://joonho112.github.io/hurdlebb/reference/rhurdle_betabinom.md)
+  : Random generation from the Hurdle Beta-Binomial
+- [`compute_p0()`](https://joonho112.github.io/hurdlebb/reference/compute_p0.md)
+  : Compute P(Y = 0) under the Beta-Binomial distribution
+- [`compute_ztbb_mean()`](https://joonho112.github.io/hurdlebb/reference/compute_ztbb_mean.md)
+  : Conditional mean of the zero-truncated Beta-Binomial
+- [`hurdle_mean()`](https://joonho112.github.io/hurdlebb/reference/hurdle_mean.md)
+  : Expected value under the Hurdle Beta-Binomial
+- [`hurdle_variance()`](https://joonho112.github.io/hurdlebb/reference/hurdle_variance.md)
+  : Variance under the Hurdle Beta-Binomial
+
+## Design-Based Inference
+
+Sandwich variance and Cholesky posterior recalibration for survey data
+
+- [`sandwich_variance()`](https://joonho112.github.io/hurdlebb/reference/sandwich_variance.md)
+  : Cluster-Robust Sandwich Variance Estimator
+- [`cholesky_correct()`](https://joonho112.github.io/hurdlebb/reference/cholesky_correct.md)
+  : Cholesky Posterior Recalibration for Survey-Weighted Inference
+- [`compute_wald_ci()`](https://joonho112.github.io/hurdlebb/reference/compute_wald_ci.md)
+  : Wald Confidence Intervals from Sandwich Variance
+
+## Marginal Effects
+
+Average marginal effect decomposition into extensive and intensive
+margins
+
+- [`ame()`](https://joonho112.github.io/hurdlebb/reference/ame.md) :
+  Average Marginal Effects Decomposition for Hurdle Beta-Binomial Models
+- [`ame_decomposition()`](https://joonho112.github.io/hurdlebb/reference/ame_decomposition.md)
+  : Extract the AME Decomposition Table
+
+## Model Comparison & Diagnostics
+
+LOO cross-validation and posterior predictive checks
+
+- [`loo(`*`<hbb_fit>`*`)`](https://joonho112.github.io/hurdlebb/reference/loo.hbb_fit.md)
+  : Leave-One-Out Cross-Validation for Hurdle Beta-Binomial Models
+- [`hbb_loo_compare()`](https://joonho112.github.io/hurdlebb/reference/hbb_loo_compare.md)
+  : Compare Hurdle Beta-Binomial Models via LOO-CV
+- [`ppc()`](https://joonho112.github.io/hurdlebb/reference/ppc.md) :
+  Posterior Predictive Checks for Hurdle Beta-Binomial Models
+
+## S3 Methods
+
+Standard generic methods for hbb_fit objects
+
+- [`coef(`*`<hbb_fit>`*`)`](https://joonho112.github.io/hurdlebb/reference/coef.hbb_fit.md)
+  : Extract Fixed-Effect Coefficients from an hbb_fit
+- [`vcov(`*`<hbb_fit>`*`)`](https://joonho112.github.io/hurdlebb/reference/vcov.hbb_fit.md)
+  : Variance-Covariance Matrix of Fixed Effects
+- [`fitted(`*`<hbb_fit>`*`)`](https://joonho112.github.io/hurdlebb/reference/fitted.hbb_fit.md)
+  : Fitted Values from an hbb_fit
+- [`residuals(`*`<hbb_fit>`*`)`](https://joonho112.github.io/hurdlebb/reference/residuals.hbb_fit.md)
+  : Residuals from an hbb_fit
+- [`predict(`*`<hbb_fit>`*`)`](https://joonho112.github.io/hurdlebb/reference/predict.hbb_fit.md)
+  : Predictions from a Hurdle Beta-Binomial Model
+- [`summary(`*`<hbb_fit>`*`)`](https://joonho112.github.io/hurdlebb/reference/summary.hbb_fit.md)
+  : Summary Method for hbb_fit Objects
+- [`nobs(`*`<hbb_fit>`*`)`](https://joonho112.github.io/hurdlebb/reference/nobs.hbb_fit.md)
+  : Number of Observations in an hbb_fit
+- [`plot(`*`<hbb_fit>`*`)`](https://joonho112.github.io/hurdlebb/reference/plot.hbb_fit.md)
+  : Plot Diagnostics and Inferential Summaries for hbb_fit Objects
+- [`plot(`*`<hbb_ppc>`*`)`](https://joonho112.github.io/hurdlebb/reference/plot.hbb_ppc.md)
+  : Plot Method for hbb_ppc Objects
+- [`print(`*`<hbb_fit>`*`)`](https://joonho112.github.io/hurdlebb/reference/print.hbb_fit.md)
+  : Print Method for hbb_fit Objects
+- [`print(`*`<hbb_sandwich>`*`)`](https://joonho112.github.io/hurdlebb/reference/print.hbb_sandwich.md)
+  : Print Method for hbb_sandwich Objects
+- [`print(`*`<hbb_cholesky>`*`)`](https://joonho112.github.io/hurdlebb/reference/print.hbb_cholesky.md)
+  : Print Method for Cholesky-Corrected Posterior Objects
+- [`print(`*`<hbb_ame>`*`)`](https://joonho112.github.io/hurdlebb/reference/print.hbb_ame.md)
+  : Print Method for hbb_ame Objects
+- [`print(`*`<hbb_loo_compare>`*`)`](https://joonho112.github.io/hurdlebb/reference/print.hbb_loo_compare.md)
+  : Print Method for hbb_loo_compare Objects
+- [`print(`*`<hbb_ppc>`*`)`](https://joonho112.github.io/hurdlebb/reference/print.hbb_ppc.md)
+  : Print Method for hbb_ppc Objects
+- [`print(`*`<summary.hbb_fit>`*`)`](https://joonho112.github.io/hurdlebb/reference/print.summary.hbb_fit.md)
+  : Print Method for summary.hbb_fit Objects
+
+## Stan Model Management
+
+Compile and cache Stan models
+
+- [`hbb_compile()`](https://joonho112.github.io/hurdlebb/reference/hbb_compile.md)
+  : Compile Stan Models for hurdlebb
+- [`hbb_clear_cache()`](https://joonho112.github.io/hurdlebb/reference/hbb_clear_cache.md)
+  : Clear Compiled Stan Model Cache
+
+## Sandwich Internals
+
+Lower-level components for sandwich variance computation
+
+- [`compute_score_matrix()`](https://joonho112.github.io/hurdlebb/reference/compute_score_matrix.md)
+  : Extract Posterior Mean Score Matrix from an hbb_fit
+- [`compute_H_obs()`](https://joonho112.github.io/hurdlebb/reference/compute_H_obs.md)
+  : Compute the Block-Diagonal Observed Information Matrix
+- [`compute_J_cluster()`](https://joonho112.github.io/hurdlebb/reference/compute_J_cluster.md)
+  : Compute the Cluster-Robust Meat Matrix
+- [`compute_der()`](https://joonho112.github.io/hurdlebb/reference/compute_der.md)
+  : Compute Design Effect Ratios from a Sandwich Variance Object
+
+## Datasets
+
+Built-in synthetic datasets based on NSECE 2019
+
+- [`nsece_synth`](https://joonho112.github.io/hurdlebb/reference/nsece_synth.md)
+  : Synthetic NSECE 2019 Center-Based Provider Data
+- [`nsece_synth_small`](https://joonho112.github.io/hurdlebb/reference/nsece_synth_small.md)
+  : Small Synthetic NSECE 2019 Dataset
+- [`nsece_state_policy`](https://joonho112.github.io/hurdlebb/reference/nsece_state_policy.md)
+  : State-Level Childcare Policy Variables
+
+# Articles
+
+### All vignettes
+
+- [Getting Started with
+  hurdlebb](https://joonho112.github.io/hurdlebb/articles/01-getting-started.md):
+
+  A hands-on introduction to fitting Hurdle Beta-Binomial models with
+  hurdlebb: explore data, specify a model, run MCMC diagnostics,
+  posterior predictive checks, and cross-validation — all using
+  pre-computed results.
+
+- [Survey Design
+  Corrections](https://joonho112.github.io/hurdlebb/articles/02-survey-design.md):
+
+  Incorporating complex survey weights into Hurdle Beta-Binomial models:
+  weighted pseudo-posteriors, sandwich standard errors, design effect
+  ratios, and Wald confidence intervals.
+
+- [State-Varying
+  Coefficients](https://joonho112.github.io/hurdlebb/articles/03-state-varying-coefficients.md):
+
+  Extending the Hurdle Beta-Binomial to capture state-level
+  heterogeneity through random intercepts and slopes, with
+  interpretation of variance components, cross-margin correlations, and
+  model comparison via LOO-CV.
+
+- [Policy
+  Moderators](https://joonho112.github.io/hurdlebb/articles/04-policy-moderators.md):
+
+  Cross-level interactions: explaining state variation in Hurdle
+  Beta-Binomial coefficients using policy variables — CCDF market rates,
+  tiered reimbursement, and infant/toddler add-ons.
+
+- [Marginal
+  Effects](https://joonho112.github.io/hurdlebb/articles/05-marginal-effects.md):
+
+  Average marginal effect decomposition for the Hurdle Beta-Binomial:
+  separating extensive-margin (participation) and intensive-margin
+  (enrolment share) contributions, with the poverty reversal
+  probability.
