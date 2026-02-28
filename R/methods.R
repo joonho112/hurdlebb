@@ -364,7 +364,7 @@ vcov.hbb_fit <- function(object, sandwich = NULL, ...) {
 #' @examples
 #' \dontrun{
 #' fit <- hbb(y | trials(n_trial) ~ poverty + urban, data = my_data)
-#' yhat   <- fitted(fit)                      # q * mu (proportion)
+#' yhat   <- fitted(fit)                      # q * g(mu) (ZT-corrected)
 #' q_hat  <- fitted(fit, type = "extensive")  # participation prob
 #' mu_hat <- fitted(fit, type = "intensive")  # conditional share
 #' }
@@ -379,10 +379,15 @@ fitted.hbb_fit <- function(object, type = c("response", "extensive",
 
     fv <- .compute_fitted_values(object)
 
+    # ZT correction: g(mu) = mu / (1 - p0) for exact unconditional mean
+    n_trial  <- as.integer(object$hbb_data$n_trial)
+    p0       <- compute_p0(n_trial, fv$mu_hat, fv$kappa_hat)
+    mu_trunc <- fv$mu_hat / pmax(1 - p0, .Machine$double.eps)
+
     switch(type,
-        response  = fv$q_hat * fv$mu_hat,
+        response  = fv$q_hat * mu_trunc,
         extensive = fv$q_hat,
-        intensive = fv$mu_hat
+        intensive = mu_trunc
     )
 }
 
@@ -398,11 +403,12 @@ fitted.hbb_fit <- function(object, type = c("response", "extensive",
 #'
 #' \describe{
 #'   \item{\code{"response"}}{Raw residuals on the proportion scale:
-#'     \eqn{r_i = y_i / n_i - \hat{q}_i \hat{\mu}_i}.}
+#'     \eqn{r_i = y_i / n_i - \hat{q}_i g(\hat{\mu}_i)},
+#'     where \eqn{g(\mu) = \mu/(1-p_0)} is the ZT intensity.}
 #'   \item{\code{"pearson"}}{Pearson residuals standardised by the
 #'     model-implied standard deviation (count scale):
 #'     \deqn{
-#'       r_i^P = \frac{y_i - n_i \hat{q}_i \hat{\mu}_i}
+#'       r_i^P = \frac{y_i - n_i \hat{q}_i g(\hat{\mu}_i)}
 #'                    {\sqrt{\widehat{\mathrm{Var}}(Y_i)}},
 #'     }
 #'     where \eqn{\widehat{\mathrm{Var}}(Y_i)} is computed via
@@ -460,15 +466,19 @@ residuals.hbb_fit <- function(object, type = c("response", "pearson"), ...) {
 
     fv <- .compute_fitted_values(object)
 
-    # Proportion-scale residual: y_i/n_i - q_hat_i * mu_hat_i
-    r_response <- y / as.numeric(n_trial) - fv$q_hat * fv$mu_hat
+    # ZT correction: g(mu) = mu / (1 - p0)
+    p0       <- compute_p0(n_trial, fv$mu_hat, fv$kappa_hat)
+    mu_trunc <- fv$mu_hat / pmax(1 - p0, .Machine$double.eps)
+
+    # Proportion-scale residual: y_i/n_i - q_hat_i * g(mu_hat_i)
+    r_response <- y / as.numeric(n_trial) - fv$q_hat * mu_trunc
 
     if (type == "response") {
         return(r_response)
     }
 
-    # Expected count (needed for Pearson residual numerator)
-    E_y <- as.numeric(n_trial) * fv$q_hat * fv$mu_hat
+    # Expected count (ZT-corrected)
+    E_y <- as.numeric(n_trial) * fv$q_hat * mu_trunc
     r_count <- y - E_y
 
     # ---- Pearson residuals with comprehensive guards ---------------

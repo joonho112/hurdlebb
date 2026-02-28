@@ -7,14 +7,23 @@
 # delta-method Wald inference via the sandwich variance.
 #
 # Theory:
-#   The HBB model implies:
-#     E[y_i / n_i] = q_i * mu_i
-#   where q_i = logistic(X_i' alpha) and mu_i = logistic(X_i' beta).
+#   The exact unconditional mean of the HBB model is:
+#     E[y_i / n_i] = q_i * g(mu_i, n_i, kappa)
+#   where g(mu) = mu / (1 - p_0) >= mu is the intensity function (Eq. 2.5).
+#   The AME computation uses this exact formula.
+#   For the NSECE data (typical n ~ 50, kappa ~ 7), p_0 < 0.01, so
+#   g(mu) ~ mu and the correction is typically < 1%.
 #
-#   By the product rule, the marginal effect of covariate k decomposes as:
-#     dE[y/n] / dx_k = alpha_k * q_i(1-q_i) * mu_i
+#   By the product rule on q*mu, the marginal effect of covariate k decomposes:
+#     d(q*mu) / dx_k = alpha_k * q_i(1-q_i) * mu_i
 #                     + beta_k  * mu_i(1-mu_i) * q_i
 #                     = [extensive]  +  [intensive]
+#
+#   Note: The manuscript's formal decomposition (Proposition 2.5, LAE/LIE)
+#   operates on the log scale and exactly incorporates h(mu) via the
+#   elasticity factor epsilon_h ~ 0.93.  This level-scale product-rule
+#   decomposition is a complementary summary that is standard in the
+#   hurdle/two-part model literature.
 #
 #   The Average Marginal Effect (AME) averages over all N observations:
 #     AME_k = (1/N) sum_i [ext_ik + int_ik]
@@ -48,8 +57,10 @@
 #' Average Marginal Effects Decomposition for Hurdle Beta-Binomial Models
 #'
 #' Computes the Average Marginal Effect (AME) of each covariate on the
-#' expected IT enrollment share \eqn{E[y_i / n_i] = q_i \mu_i}, decomposed
-#' into extensive-margin and intensive-margin contributions.
+#' expected IT enrollment share \eqn{E[y_i / n_i] = q_i \cdot g(\mu_i)}
+#' where \eqn{g(\mu) = \mu / (1 - p_0)} is the zero-truncation intensity
+#' function, decomposed into extensive-margin
+#' and intensive-margin contributions.
 #'
 #' @description
 #' The hurdle Beta-Binomial model implies two channels through which
@@ -227,6 +238,7 @@ ame <- function(fit,
     P <- fit$hbb_data$P
     N <- fit$hbb_data$N
     D <- 2L * P + 1L
+    n_trial <- as.integer(fit$hbb_data$n_trial)
 
     # -- Covariate labels ------------------------------------------------------
     if (!is.null(colnames(X))) {
@@ -285,6 +297,8 @@ ame <- function(fit,
     for (m in seq_len(M_use)) {
         alpha_m <- theta_sub[m, seq_len(P)]
         beta_m  <- theta_sub[m, (P + 1L):(2L * P)]
+        log_kappa_m <- theta_sub[m, D]
+        kappa_m <- pmin(exp(log_kappa_m), 1e15)
 
         # Linear predictors (N-vectors)
         eta_ext <- as.numeric(X %*% alpha_m)
@@ -298,9 +312,19 @@ ame <- function(fit,
         q_deriv  <- q_m * (1 - q_m)
         mu_deriv <- mu_m * (1 - mu_m)
 
-        # Scalar kernels (one per draw, independent of k)
-        mean_ext_kernel <- mean(q_deriv * mu_m)
-        mean_int_kernel <- mean(mu_deriv * q_m)
+        # --- ZT correction: g(mu) = mu / (1 - p0) ---
+        p0_m    <- compute_p0(n_trial, mu_m, kappa_m)
+        one_mp0 <- pmax(1 - p0_m, .Machine$double.eps)
+        g_m     <- mu_m / one_mp0
+
+        # g'(mu) for intensive kernel
+        b_m       <- (1 - mu_m) * kappa_m
+        Lambda_m  <- kappa_m * (digamma(b_m + n_trial) - digamma(b_m))
+        g_prime_m <- 1 / one_mp0 + mu_m * p0_m * Lambda_m / one_mp0^2
+
+        # Scalar kernels (ZT-corrected)
+        mean_ext_kernel <- mean(q_deriv * g_m)
+        mean_int_kernel <- mean(g_prime_m * mu_deriv * q_m)
 
         # NaN/Inf check
         if (!is.finite(mean_ext_kernel) || !is.finite(mean_int_kernel)) {
@@ -315,7 +339,7 @@ ame <- function(fit,
 
         # Diagnostics
         mean_q[m]  <- mean(q_m)
-        mean_mu[m] <- mean(mu_m)
+        mean_mu[m] <- mean(g_m)
     }
 
     if (n_nan_draws > 0L) {
@@ -358,7 +382,7 @@ ame <- function(fit,
     # 6. POINT ESTIMATES AT THETA_HAT
     # =========================================================================
 
-    point_est <- .ame_at_theta(theta_hat, X, P)
+    point_est <- .ame_at_theta(theta_hat, X, n_trial, P)
     ame_ext_hat   <- point_est$ext
     ame_int_hat   <- point_est$int
     ame_total_hat <- point_est$total
@@ -383,6 +407,7 @@ ame <- function(fit,
             wald_summary <- .ame_compute_wald(
                 theta_hat = theta_hat,
                 X         = X,
+                n_trial   = n_trial,
                 V_sand    = sandwich$V_sand,
                 P         = P,
                 D         = D,
@@ -610,14 +635,19 @@ ame_decomposition <- function(ame_result) {
 #'
 #' @param theta Numeric vector of length D = 2P + 1.
 #' @param X Numeric matrix N x P.
+#' @param n_trial Integer vector of length N: trial sizes for ZT correction.
 #' @param P Integer: number of covariates per margin.
 #' @return Named list with elements: ext (P-vector), int (P-vector),
 #'   total (P-vector), mean_q (scalar), mean_mu (scalar).
 #' @keywords internal
-.ame_at_theta <- function(theta, X, P) {
+.ame_at_theta <- function(theta, X, n_trial, P) {
+
+    D <- 2L * P + 1L
 
     alpha <- theta[seq_len(P)]
     beta  <- theta[(P + 1L):(2L * P)]
+    log_kappa <- theta[D]
+    kappa <- pmin(exp(log_kappa), 1e15)   # numeric guard
 
     eta_ext <- as.numeric(X %*% alpha)
     eta_int <- as.numeric(X %*% beta)
@@ -628,9 +658,20 @@ ame_decomposition <- function(ame_result) {
     q_deriv  <- q_v * (1 - q_v)
     mu_deriv <- mu_v * (1 - mu_v)
 
-    # Scalar kernels
-    ext_kernel <- mean(q_deriv * mu_v)
-    int_kernel <- mean(mu_deriv * q_v)
+    # --- ZT correction: g(mu) = mu / (1 - p0) --------------------------------
+    p0_v     <- compute_p0(n_trial, mu_v, kappa)
+    one_mp0  <- pmax(1 - p0_v, .Machine$double.eps)
+    g_v      <- mu_v / one_mp0             # intensity function h(mu)
+
+    # g'(mu) = 1/(1-p0) + mu * p0 * Lambda / (1-p0)^2
+    # where Lambda = kappa * [psi(b+n) - psi(b)], b = (1-mu)*kappa
+    b_v       <- (1 - mu_v) * kappa
+    Lambda_v  <- kappa * (digamma(b_v + n_trial) - digamma(b_v))
+    g_prime_v <- 1 / one_mp0 + mu_v * p0_v * Lambda_v / one_mp0^2
+
+    # Scalar kernels (ZT-corrected)
+    ext_kernel <- mean(q_deriv * g_v)
+    int_kernel <- mean(g_prime_v * mu_deriv * q_v)
 
     ext_v   <- alpha * ext_kernel
     int_v   <- beta  * int_kernel
@@ -641,7 +682,7 @@ ame_decomposition <- function(ame_result) {
         int    = int_v,
         total  = total_v,
         mean_q  = mean(q_v),
-        mean_mu = mean(mu_v)
+        mean_mu = mean(g_v)        # report ZT-corrected mean intensity
     )
 }
 
@@ -753,6 +794,7 @@ ame_decomposition <- function(ame_result) {
 #'
 #' @param theta_hat Numeric D-vector: posterior mean.
 #' @param X Numeric N x P matrix.
+#' @param n_trial Integer vector of length N: trial sizes for ZT correction.
 #' @param V_sand D x D sandwich variance matrix.
 #' @param P Integer: number of covariates.
 #' @param D Integer: total parameters (2P + 1).
@@ -761,7 +803,7 @@ ame_decomposition <- function(ame_result) {
 #'   ext_point, ext_se, ext_lo, ext_hi, int_point, int_se,
 #'   int_lo, int_hi, total_point, total_se, total_lo, total_hi.
 #' @keywords internal
-.ame_compute_wald <- function(theta_hat, X, V_sand, P, D, level) {
+.ame_compute_wald <- function(theta_hat, X, n_trial, V_sand, P, D, level) {
 
     eps <- 1e-5
     z_crit <- qnorm((1 + level) / 2)
@@ -784,8 +826,8 @@ ame_decomposition <- function(ame_result) {
         theta_plus[d]  <- theta_plus[d]  + eps
         theta_minus[d] <- theta_minus[d] - eps
 
-        ame_plus  <- .ame_at_theta(theta_plus,  X, P)
-        ame_minus <- .ame_at_theta(theta_minus, X, P)
+        ame_plus  <- .ame_at_theta(theta_plus,  X, n_trial, P)
+        ame_minus <- .ame_at_theta(theta_minus, X, n_trial, P)
 
         grad_ext[, d]   <- (ame_plus$ext   - ame_minus$ext)   / (2 * eps)
         grad_int[, d]   <- (ame_plus$int   - ame_minus$int)   / (2 * eps)
@@ -815,7 +857,7 @@ ame_decomposition <- function(ame_result) {
     se_total <- sqrt(pmax(var_total, 0))
 
     # Point estimates at theta_hat
-    ame_hat <- .ame_at_theta(theta_hat, X, P)
+    ame_hat <- .ame_at_theta(theta_hat, X, n_trial, P)
 
     data.frame(
         covariate   = cov_labels,

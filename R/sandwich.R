@@ -609,8 +609,8 @@ compute_H_obs <- function(fit, scores = NULL) {
 #' Compute the Cluster-Robust Meat Matrix
 #'
 #' Aggregates weighted scores to the stratum--PSU level and computes
-#' the Taylor linearisation variance estimator with finite population
-#' correction (FPC) at the stratum level.
+#' the Taylor linearisation variance estimator with degrees-of-freedom
+#' (Bessel) correction at the stratum level.
 #'
 #' @param scores Numeric matrix of dimension \eqn{N \times D}. The
 #'   posterior mean score matrix from [compute_score_matrix()].
@@ -736,8 +736,9 @@ compute_J_cluster <- function(scores, hbb_data) {
         delta_hc <- sweep(s_hc, 2L, s_bar_h, FUN = "-")
 
         # Accumulate: J += (C_h / (C_h - 1)) * crossprod(delta_hc)
-        fpc <- C_h / (C_h - 1L)
-        J_cluster <- J_cluster + fpc * crossprod(delta_hc)
+        # Note: C_h/(C_h-1) is the Bessel (df) correction, NOT an FPC
+        bessel <- C_h / (C_h - 1L)
+        J_cluster <- J_cluster + bessel * crossprod(delta_hc)
     }
 
     # Force symmetry

@@ -7,10 +7,11 @@
 # Theory:
 #   The predicted enrollment proportion for observation i with covariate
 #   vector x_i is
-#     E[Y_i / n_i] = q(x_i) * mu(x_i)
+#     E[Y_i / n_i] = q(x_i) * g(mu(x_i))
 #   where
-#     q(x_i) = logistic(x_i' alpha)      [extensive margin]
-#     mu(x_i) = logistic(x_i' beta)      [intensive margin]
+#     q(x_i)  = logistic(x_i' alpha)           [extensive margin]
+#     mu(x_i) = logistic(x_i' beta)            [intensive margin]
+#     g(mu)   = mu / (1 - p_0(n, mu, kappa))   [ZT intensity, Eq. 2.5]
 #
 #   For SVC models with known state s(i), the linear predictor includes
 #   state random effects:
@@ -323,12 +324,36 @@ predict.hbb_fit <- function(object,
     # 3. Point predictions
     # ========================================================================
 
+    # -- Resolve n_trial for ZT correction ------------------------------------
+    if (is.null(newdata)) {
+        n_trial_pred <- as.integer(object$hbb_data$n_trial)
+    } else {
+        # Try to extract trials variable from newdata
+        trials_var <- object$formula$trials
+        if (!is.null(trials_var) && trials_var %in% names(newdata)) {
+            n_trial_pred <- as.integer(newdata[[trials_var]])
+        } else {
+            # Use median from training data as fallback
+            n_trial_pred <- as.integer(median(object$hbb_data$n_trial))
+            if (type != "extensive") {
+                cli::cli_warn(c(
+                    "!" = "Trials variable not found in {.arg newdata}.",
+                    "i" = "Using median training n_trial = {n_trial_pred} \\
+                           for ZT correction.",
+                    "i" = "Include the trials column in newdata for exact \\
+                           predictions."
+                ))
+            }
+        }
+    }
+
     point_pred <- .predict_compute_point(
-        object = object,
-        X_new  = X_new,
-        P      = P,
-        delta  = delta_info,
-        type   = type
+        object  = object,
+        X_new   = X_new,
+        P       = P,
+        delta   = delta_info,
+        type    = type,
+        n_trial = n_trial_pred
     )
 
     # ========================================================================
@@ -337,13 +362,14 @@ predict.hbb_fit <- function(object,
 
     if (interval == "credible") {
         ci <- .predict_compute_interval(
-            object = object,
-            X_new  = X_new,
-            P      = P,
-            delta  = delta_info,
-            type   = type,
-            level  = level,
-            ndraws = ndraws
+            object  = object,
+            X_new   = X_new,
+            P       = P,
+            delta   = delta_info,
+            type    = type,
+            level   = level,
+            ndraws  = ndraws,
+            n_trial = n_trial_pred
         )
 
         result <- data.frame(
@@ -670,7 +696,8 @@ predict.hbb_fit <- function(object,
 #' @param type One of "response", "extensive", "intensive".
 #' @return Numeric vector of length N_new.
 #' @keywords internal
-.predict_compute_point <- function(object, X_new, P, delta, type) {
+.predict_compute_point <- function(object, X_new, P, delta, type,
+                                    n_trial = NULL) {
 
     D <- 2L * P + 1L
     param_names <- .make_stan_param_names(P)
@@ -720,10 +747,21 @@ predict.hbb_fit <- function(object,
     q_hat  <- plogis(eta_ext)
     mu_hat <- plogis(eta_int)
 
+    # --- ZT correction: g(mu) = mu / (1 - p0) --------------------------------
+    log_kappa_hat <- theta_hat[D]
+    kappa_hat <- pmin(exp(log_kappa_hat), 1e15)
+
+    if (!is.null(n_trial) && type != "extensive") {
+        p0_hat   <- compute_p0(as.integer(n_trial), mu_hat, kappa_hat)
+        mu_trunc <- mu_hat / pmax(1 - p0_hat, .Machine$double.eps)
+    } else {
+        mu_trunc <- mu_hat
+    }
+
     pred <- switch(type,
-        response  = q_hat * mu_hat,
+        response  = q_hat * mu_trunc,
         extensive = q_hat,
-        intensive = mu_hat
+        intensive = mu_trunc
     )
 
     # NaN/Inf guard and [0,1] clamping
@@ -781,7 +819,7 @@ predict.hbb_fit <- function(object,
 #'   (N_new-vector).
 #' @keywords internal
 .predict_compute_interval <- function(object, X_new, P, delta, type,
-                                       level, ndraws) {
+                                       level, ndraws, n_trial = NULL) {
 
     D <- 2L * P + 1L
     N_new <- nrow(X_new)
@@ -846,6 +884,8 @@ predict.hbb_fit <- function(object,
     for (m in seq_len(M)) {
         alpha_m <- draws[m, seq_len(P)]
         beta_m  <- draws[m, (P + 1L):(2L * P)]
+        log_kappa_m <- draws[m, D]
+        kappa_m <- pmin(exp(log_kappa_m), 1e15)
 
         eta_ext_m <- as.numeric(X_new %*% alpha_m)
         eta_int_m <- as.numeric(X_new %*% beta_m)
@@ -859,10 +899,18 @@ predict.hbb_fit <- function(object,
         q_m  <- plogis(eta_ext_m)
         mu_m <- plogis(eta_int_m)
 
+        # ZT correction
+        if (!is.null(n_trial) && type != "extensive") {
+            p0_m     <- compute_p0(as.integer(n_trial), mu_m, kappa_m)
+            mu_trunc <- mu_m / pmax(1 - p0_m, .Machine$double.eps)
+        } else {
+            mu_trunc <- mu_m
+        }
+
         pred_mat[m, ] <- switch(type,
-            response  = q_m * mu_m,
+            response  = q_m * mu_trunc,
             extensive = q_m,
-            intensive = mu_m
+            intensive = mu_trunc
         )
     }
 

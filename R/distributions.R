@@ -427,8 +427,11 @@ rztbetabinom <- function(nn, n, mu, kappa) {
             cli_warn(c(
                 "Rejection sampling did not produce enough non-zero draws.",
                 "i" = "Requested {need}, obtained {length(collected)}.",
-                "i" = "Parameters: n={ni}, mu={mui}, kappa={ki}, p0={round(p0, 4)}"
+                "i" = "Parameters: n={ni}, mu={mui}, kappa={ki}, p0={round(p0, 4)}",
+                "i" = "Padding with 1s for {need - length(collected)} missing draw(s)."
             ))
+            # Pad with 1 (the smallest valid ZTBB value) to avoid NA
+            collected <- c(collected, rep(1L, need - length(collected)))
         }
 
         result[idx] <- collected[seq_len(need)]
@@ -450,7 +453,7 @@ rztbetabinom <- function(nn, n, mu, kappa) {
 #' The formula is
 #' \deqn{
 #'   p_0 = \frac{B(b + n,\; a)}{B(b,\; a)}
-#'   = \exp\bigl[\Gamma(b + n) + \ln\Gamma(\kappa)
+#'   = \exp\bigl[\ln\Gamma(b + n) + \ln\Gamma(\kappa)
 #'              - \ln\Gamma(b) - \ln\Gamma(\kappa + n)\bigr],
 #' }
 #' where \eqn{a = \mu\kappa} and \eqn{b = (1 - \mu)\kappa}.

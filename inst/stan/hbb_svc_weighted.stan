@@ -29,8 +29,8 @@
 //   Pseudo-posterior on same "effective sample size" scale (Savitsky & Toth, 2016).
 //
 // Configurable priors via data block (no recompilation needed):
-//   alpha     ~ Normal(0, prior_alpha_sd)
-//   beta      ~ Normal(0, prior_beta_sd)
+//   alpha     ~ Normal(prior_alpha_mean, prior_alpha_sd)
+//   beta      ~ Normal(prior_beta_mean, prior_beta_sd)
 //   log_kappa ~ Normal(prior_kappa_mean, prior_kappa_sd)
 //   vec(Gamma) ~ Normal(0, prior_gamma_sd)
 //   tau       ~ Normal+(0, prior_tau_sd)
@@ -83,8 +83,10 @@ data {
   vector<lower=0>[N] w_tilde;       // normalized survey weights: sum(w_tilde) = N
 
   // --- Configurable prior hyperparameters ---
-  real<lower=0> prior_alpha_sd;      // SD for alpha ~ Normal(0, .)
-  real<lower=0> prior_beta_sd;       // SD for beta  ~ Normal(0, .)
+  real prior_alpha_mean;              // mean for alpha ~ Normal(., .)
+  real prior_beta_mean;               // mean for beta  ~ Normal(., .)
+  real<lower=0> prior_alpha_sd;      // SD for alpha ~ Normal(., .)
+  real<lower=0> prior_beta_sd;       // SD for beta  ~ Normal(., .)
   real prior_kappa_mean;             // mean for log_kappa ~ Normal(., .)
   real<lower=0> prior_kappa_sd;      // SD for log_kappa ~ Normal(., .)
   real<lower=0> prior_gamma_sd;      // SD for vec(Gamma) ~ Normal(0, .)
@@ -135,8 +137,8 @@ transformed parameters {
 
 model {
   // --- Priors: fixed effects (configurable via data) ---
-  alpha ~ normal(0, prior_alpha_sd);
-  beta ~ normal(0, prior_beta_sd);
+  alpha ~ normal(prior_alpha_mean, prior_alpha_sd);
+  beta ~ normal(prior_beta_mean, prior_beta_sd);
   log_kappa ~ normal(prior_kappa_mean, prior_kappa_sd);
 
   // --- Prior: policy moderator coefficients ---
