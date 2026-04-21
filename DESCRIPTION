@@ -2,7 +2,7 @@ Package: hurdlebb
 Title: Hurdle Beta-Binomial Models for Bounded Discrete Proportions
 Version: 0.1.0
 Authors@R:
-    person("JoonHo", "Lee", , "jlee233@ua.edu", role = c("aut", "cre"),
+    person("JoonHo", "Lee", , "jlee296@ua.edu", role = c("aut", "cre"),
            comment = c(ORCID = "0009-0006-4019-8703"))
 Description: Fits two-part hurdle beta-binomial models for bounded discrete
     proportions with structural zeros. Supports survey-weighted
